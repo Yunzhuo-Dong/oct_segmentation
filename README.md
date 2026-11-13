@@ -1,91 +1,91 @@
-# 小鼠视网膜 OCT 层边界分割
+# Mouse Retinal OCT Layer Boundary Segmentation
 
-在小鼠视网膜 OCT B-scan 上自动定位 11 条层边界，并把训练好的模型逐帧用在原始 OCT 视频（AVI）上，得到每条边界的深度图和各层厚度图。
+Automatic localisation of 11 retinal layer boundaries in mouse OCT B-scans. The trained model is also applied frame by frame to the raw OCT volumes (AVI), producing a depth map for every boundary and thickness maps for the layers between them.
 
-![AVI 上的预测（测试动物，训练时未见过）](results/figures/avi_frame_00100.png)
+![Prediction on an AVI frame (test animal, never seen during training)](results/figures/avi_frame_00100.png)
 
-## 1. 数据
+## 1. Data
 
-- **来源：** MATLAB Image Labeler 导出的标注（`grdTruthOutput`，每条边界一个 `labelMask`）和对应的原始 TIFF。
-- **规模：** 719 张 B-scan，尺寸 1143×782，来自 64 只小鼠、7 个实验组（NaIO3 0/3/7 dpi、tgCR、JHA_CRX29、RPE31_32、RPE34）。
-- **数据划分：按动物切分**，同一只动物的所有图像只出现在一个集合里，避免同一只眼睛的相邻切片同时进入训练和测试。
+- **Source:** annotations exported from MATLAB Image Labeler (`grdTruthOutput`, one `labelMask` per boundary) and the corresponding raw TIFF images.
+- **Size:** 719 B-scans of 1143×782 px from 64 mice in 7 experimental groups (NaIO3 0/3/7 dpi, tgCR, JHA_CRX29, RPE31_32, RPE34).
+- **Split by animal:** all images of one animal belong to exactly one set, so neighbouring slices of the same eye never appear in both training and evaluation.
 
-  | | 图像 | 动物 |
+  | | images | animals |
   |---|---|---|
   | train | 546 | 35 |
   | val | 88 | 15 |
   | test | 85 | 14 |
 
-- **标注是稀疏的：** 不是每张图都标了全部 11 条边界（例如 GCL 只在 167 张图里出现），一条边界也常常只标了一部分列。没有标注的列不参与训练损失，不会被当成“这里没有这条边界”。
-- **重复文件处理：** 不同文件夹里完全相同的图像和标注只保留一份；没有任何有效标注的草稿文件会被跳过。
+- **Sparse annotations:** not every image has all 11 boundaries (GCL, for example, is annotated in only 167 images), and a boundary is often annotated over only part of the width. Columns without an annotation are excluded from the loss; they are never treated as "this boundary is absent".
+- **Duplicates:** identical image/annotation copies stored in several folders are kept once; draft files without any valid annotation are skipped.
 
-![训练数据中的标注示例](results/figures/gt_example_1.png)
+![Annotation example from the training data](results/figures/gt_example_1.png)
 
-## 2. 层的规则
+## 2. Layer rules
 
-### 2.1 11 条边界与顺序
+### 2.1 The 11 boundaries and their order
 
-数组坐标中 y 轴向下，玻璃体在图像上方。从上到下，边界顺序固定为：
+In array coordinates (y pointing down) the vitreous is at the top of the image. From top to bottom the boundary order is fixed:
 
 ```
 RNFL → GCL → IPL → INL → OPL → ONL → OLM → IS → OS → RPE → CHOROID
 ```
 
-每个名字表示**该层靠玻璃体一侧的上边界**，例如 “IPL” 指 GCL/IPL 交界，“INL” 指 IPL/INL 交界。
+Each name marks the **upper boundary of that layer, on the vitreous side**. For example, "IPL" is the GCL/IPL interface and "INL" is the IPL/INL interface.
 
-这个顺序不是人工设定的，而是从训练集标注中统计出来的：
+This order is not assumed by hand; it is derived from the training annotations:
 
-- 在数百万个“两条边界在同一列都有标注”的位置上，**顺序反转的次数为 0**；
-- 相邻边界的平均间距与小鼠视网膜各层厚度相符，例如 IPL→INL 约 90 px，INL→OPL 约 60 px，OPL→ONL 约 15 px，ONL→OLM 约 110 px。
+- across millions of columns in which two boundaries are both annotated, the order is **never reversed**;
+- the mean gaps between neighbouring boundaries match mouse retinal layer thicknesses, e.g. IPL→INL ≈ 90 px, INL→OPL ≈ 60 px, OPL→ONL ≈ 15 px, ONL→OLM ≈ 110 px.
 
-详细统计见 [`results/data/order_table.csv`](results/data/order_table.csv)。
+The full statistics are in [`results/data/order_table.csv`](results/data/order_table.csv).
 
-### 2.2 训练中使用的解剖规则
+### 2.2 Anatomical rules used during training
 
-1. **顺序约束：** 对每一对边界 (a, b)，只要 a 在 b 上方，就要求预测满足 `y_a ≤ y_b`。违反时惩罚 `relu(y_a − y_b)`。
-   - 两条边界**重合是允许的**（层可以变得很薄，或在病理区域消失），只有交叉会被惩罚。
-   - 共 45 对约束；每对都需要满足：训练集中至少 200 列有共同标注，且反转率 ≤ 1%。
-2. **平滑约束：** 对每条边界惩罚相邻列之间的二阶差分（Huber 损失），抑制锯齿和突然跳变。
-3. **置信度门控：** 以上两种约束只作用在模型**有把握**的列上，即预测峰附近 ±5 px 内的概率质量 > 0.7。如果某一层在病变或视神经附近真的消失了，模型在那里的预测分布会变平，约束就不会生效，因此不会被强行“画出”一条不存在的线。
-4. **CHOROID 特殊处理：** CHOROID 在 82% 的列上标了两条线（脉络膜的上、下界），所以训练目标是双峰分布，并且不参与顺序和平滑约束。推理时取概率最高的两个峰，作为上、下两条曲线。
+1. **Order constraint:** for every pair of boundaries (a, b) where a lies above b, the prediction must satisfy `y_a ≤ y_b`. Violations are penalised with `relu(y_a − y_b)`.
+   - Two boundaries are **allowed to touch** (a layer can become very thin or vanish in pathological regions); only crossing is penalised.
+   - 45 pairs are constrained. Each pair needs at least 200 jointly annotated training columns and a reversal rate ≤ 1%.
+2. **Smoothness constraint:** a Huber penalty on the second difference between neighbouring columns of each boundary suppresses zig-zags and sudden jumps.
+3. **Confidence gating:** both constraints are applied only in columns where the model is **confident**, i.e. more than 0.7 of the probability mass lies within ±5 px of the predicted peak. If a layer genuinely disappears (pathology, near the optic nerve head) the predicted distribution there becomes flat, the constraints switch off, and the model is not forced to draw a line that does not exist.
+4. **CHOROID:** 82% of the annotated CHOROID columns contain two lines (upper and lower border of the choroid). Its target is therefore bimodal, and it is excluded from the order and smoothness constraints. At inference the two highest peaks are taken as the upper and lower curve.
 
-## 3. 模型与训练
+## 3. Model and training
 
-**模型：** FFC-UNet，约 13M 参数。它是一个 5 级残差 U-Net，从第 3 级开始以及在瓶颈层使用 Fast Fourier Convolution，用频域分支获得全图范围的感受野。归一化采用 GroupNorm。输出 11 个通道，每个通道在**每一列上沿 y 方向做 softmax**，得到该边界在这一列的位置分布。
+**Model:** FFC-UNet, about 13M parameters. A 5-level residual U-Net whose deeper stages (from level 3 on) and bottleneck use Fast Fourier Convolution; the spectral branch gives an image-wide receptive field. GroupNorm is used for normalisation. The network outputs 11 channels, and each channel is passed through a **softmax along y in every column**, giving the position distribution of that boundary in that column.
 
-**训练目标：** 每条标注的边界在对应列上转成高斯软标签（σ = 1.5 px）。当一列里连续标注了好几个像素时，高斯会相应加宽。
+**Targets:** each annotated boundary is converted into a Gaussian soft label along the column (σ = 1.5 px). When several consecutive pixels in one column are annotated, the Gaussian is widened accordingly.
 
-**损失函数：**
+**Loss:**
 
 ```
-L = CE(列方向软标签)  +  λ_order · L_order  +  λ_smooth · L_smooth
+L = CE(column-wise soft labels)  +  λ_order · L_order  +  λ_smooth · L_smooth
 λ_order = 0.1,  λ_smooth = 0.01
 ```
 
-两项约束从第 3 个 epoch 开始启用，并在 3 个 epoch 内线性增加到设定权重。
+The two constraint terms are switched on from epoch 3 and ramped up linearly to their full weight over 3 epochs.
 
-**解码：** 在每列概率最高的位置附近 ±5 px 内做加权平均（局部 soft-argmax），得到亚像素精度的边界位置。
+**Decoding:** a local soft-argmax (probability-weighted mean within ±5 px of the most likely position in each column), giving sub-pixel boundary positions.
 
-**训练设置：**
+**Training setup:**
 
-| 项目 | 设置 |
+| Item | Setting |
 |---|---|
-| epochs | 30 |
-| batch size | 16（每次前向 4 张，梯度累积 4 次；GroupNorm 下与真实 batch 16 等价） |
-| 优化器 | AdamW，lr 3e-4，weight decay 1e-4，梯度裁剪 1.0 |
-| 学习率 | 前 5% 步数线性 warmup，之后余弦衰减 |
-| 精度 | bf16 混合精度（FFT 部分用 fp32） |
-| 数据增强 | 水平翻转；上下平移 ±40 px；gamma、对比度、亮度扰动；高斯噪声。几何增强同步作用在图像和标注上 |
-| 模型选择 | 保存验证集 macro W1 最低的 epoch |
-| 硬件 | 1× NVIDIA H100，约 16 分钟，显存峰值约 17 GB |
+| Epochs | 30 |
+| Batch size | 16 (4 images per forward pass, 4 accumulation steps; equivalent to a true batch of 16 because of GroupNorm) |
+| Optimiser | AdamW, lr 3e-4, weight decay 1e-4, gradient clipping 1.0 |
+| Learning-rate schedule | linear warm-up over the first 5% of steps, then cosine decay |
+| Precision | bf16 mixed precision (FFT in fp32) |
+| Augmentation | horizontal flip; vertical shift ±40 px; gamma, contrast and brightness jitter; Gaussian noise. Geometric augmentations are applied to image and annotation together |
+| Model selection | epoch with the lowest validation macro W1 |
+| Hardware | 1× NVIDIA H100, about 16 min, peak memory about 17 GB |
 
-![训练曲线](results/figures/training_curves.png)
+![Training curves](results/figures/training_curves.png)
 
-## 4. 结果
+## 4. Results
 
-误差单位为像素，在 1143×782 的原始网格上计算。MAE 只统计 GT 在该列只有一条线的位置；CHOROID 按上、下两条线分别匹配最近的预测峰。
+Errors are in pixels on the original 1143×782 grid. MAE is computed on columns where the ground truth has a single line; CHOROID is evaluated by matching each of its two ground-truth lines to the nearest predicted peak.
 
-| 边界 | val MAE | val 中位数 | test MAE | test 中位数 |
+| Boundary | val MAE | val median | test MAE | test median |
 |---|---|---|---|---|
 | RNFL | 2.00 | 1.54 | 2.15 | 1.58 |
 | GCL | 3.46 | 1.69 | 3.13 | 1.87 |
@@ -97,73 +97,73 @@ L = CE(列方向软标签)  +  λ_order · L_order  +  λ_smooth · L_smooth
 | IS | 1.97 | 1.27 | 1.66 | 1.19 |
 | OS | 2.56 | 1.55 | 4.24 | 1.81 |
 | RPE | 1.75 | 1.41 | 5.33 | 1.49 |
-| CHOROID（两条线） | 4.00 | 2.01 | 7.00 | 2.17 |
-| **平均（不含 CHOROID）** | **2.73** | | **3.21** | |
+| CHOROID (two lines) | 4.00 | 2.01 | 7.00 | 2.17 |
+| **Mean (without CHOROID)** | **2.73** | | **3.21** | |
 
-- 大部分边界的中位误差在 1.2–2.5 px 之间，预测出的边界线连续，基本没有跳变。
-- 平均值主要被少数困难图像拉高。例如 test 上 RPE 的中位数是 1.49 px，P90 是 4.5 px，但 P99 达到约 96 px：少数图像上整段边界落到了相邻结构上。
-- IPL 是最难的边界：它和 GCL 只相隔约 13 px，且 GCL 标注很少。
-- 按实验组的结果见 [`results/metrics/`](results/metrics/)。
+- For most boundaries the median error is between 1.2 and 2.5 px, and the predicted boundaries are continuous with practically no jumps.
+- The means are driven by a few difficult images. On the test set, for example, RPE has a median of 1.49 px and a P90 of 4.5 px, but its P99 reaches about 96 px: in a few images a whole stretch of the boundary is placed on a neighbouring structure.
+- IPL is the hardest boundary: it lies only about 13 px below GCL, and GCL is rarely annotated.
+- Results per experimental group are in [`results/metrics/`](results/metrics/).
 
-![验证集预测示例](results/figures/val_prediction_2.png)
+![Validation prediction example](results/figures/val_prediction_2.png)
 
-## 5. 在原始 OCT 视频（AVI）上的应用
+## 5. Application to raw OCT volumes (AVI)
 
-1. **几何对应：** 训练用的 TIFF 就是 AVI 某一帧的直接裁剪。以 test 动物 MA-N978 为例，TIFF 对应第 59 帧，匹配 NCC = 1.000，缩放 1.0，无需翻转。所以模型可以直接用在 AVI 帧上，不用重采样。
-2. **裁剪：** 每帧按 (x=30, y=26, 770×1000) 裁剪，去掉顶部伪影和左侧黑边。
-3. **推理：** 每 2 帧推理一次，将所有帧的边界拼起来，得到每条边界的深度图和相邻边界之间的厚度图。图中的纵轴是帧号，未换算成物理距离。
+1. **Geometry:** the training TIFFs are direct crops of single AVI frames. For the test animal MA-N978 the TIFF corresponds to frame 59 with NCC = 1.000, scale 1.0 and no flip, so the model can be applied to AVI frames without any resampling.
+2. **Crop:** every frame is cropped to (x=30, y=26, 770×1000) to remove the artefacts at the top and the black margin on the left.
+3. **Inference:** every second frame is processed. Stacking the boundaries of all frames gives a depth map per boundary and thickness maps between neighbouring boundaries. The vertical axis of these maps is the frame index, not a calibrated distance.
 
-![深度图](results/figures/avi_depth_maps.png)
+![Depth maps](results/figures/avi_depth_maps.png)
 
-![厚度图](results/figures/avi_thickness_maps.png)
+![Thickness maps](results/figures/avi_thickness_maps.png)
 
-需要注意：
-- 视神经头附近层结构会中断，那里的预测不代表病理。可以用 `07_avi_infer.py --onh` 把该区域排除。
-- GCL/IPL 在 AVI 上是断续的；CHOROID 的下边界在信号弱的地方偶尔会在两个峰之间跳动。
+Notes:
+- Near the optic nerve head the layers are interrupted; predictions there do not indicate pathology. This region can be excluded with `07_avi_infer.py --onh`.
+- GCL/IPL are fragmented on the AVI frames, and where the signal is weak the lower CHOROID border occasionally jumps between the two peaks.
 
-## 6. 复现
+## 6. Reproduction
 
-所有路径集中在 `slurm/env.sh`（Capella，GPU）和 `slurm/barnard_env.sh`（Barnard，CPU）里设置。
+All paths are set in `slurm/env.sh` (Capella, GPU) and `slurm/barnard_env.sh` (Barnard, CPU).
 
 ```bash
-# 1) 从 MATLAB 标注构建数据集，并按动物切分（CPU）
+# 1) Build the dataset from the MATLAB annotations and split by animal (CPU)
 python 02_prepare.py --mat-root "$MAT_BASE" --out "$DATA" --split-mode animal --workers 8
-python 03_review_overlays.py --data-dir "$DATA" --out ~/octb_review --n 20      # 检查标注叠加图
+python 03_review_overlays.py --data-dir "$DATA" --out ~/octb_review --n 20      # check annotation overlays
 
-# 2) 训练（GPU，Capella）
+# 2) Train (GPU, Capella)
 sbatch --export=ALL,EXP=E1,MICRO=4 slurm/train.sh
 
-# 3) 评估 + 误差分析（CPU）
+# 3) Evaluation and error analysis (CPU)
 python 05_evaluate.py --ckpt "$RUNS/E1/best.pt" --data-dir "$DATA" --split val --out "$RUNS/E1/eval_val"
 python 08_analyze.py  --data-dir "$DATA" --models E1="$RUNS/E1/best.pt" --split test --out "$RUNS/analysis_test"
 
 # 4) AVI
-python list_avi.py --split test                                   # 列出 test 动物的 AVI 和对应 TIFF
+python list_avi.py --split test                                   # AVIs of test animals and their TIFFs
 python 06_avi_match.py --avi "$AVI" --tiff "$TIF" --data-dir "$DATA" --out match.json
 python 07_avi_infer.py --avi "$AVI" --ckpt "$RUNS/E1/best.pt" --data-dir "$DATA" --match match.json --out avi_out --step 2
 
-# 5) 把结果收集到 results/
-python make_report_assets.py --avi-name <AVI 文件名，不含 .avi>
+# 5) Collect results into results/
+python make_report_assets.py --avi-name <AVI file name without .avi>
 ```
 
-训练好的权重在 `results/model/E1_weights.pt`（fp16，仅权重）。它可以直接作为 `--ckpt` 传给 `05_evaluate.py`、`07_avi_infer.py`；如果数据集不是同一次构建的，会出现 manifest 不一致的警告，可以忽略。
+The trained weights are in `results/model/E1_weights.pt` (fp16, weights only). They can be passed directly as `--ckpt` to `05_evaluate.py` and `07_avi_infer.py`. If the dataset was built in a different run, a manifest-mismatch warning is printed; it can be ignored.
 
-依赖：Python 3.11、PyTorch ≥ 2.1、numpy、scipy、matplotlib、Pillow、tifffile、opencv-python-headless。
+Requirements: Python 3.11, PyTorch ≥ 2.1, numpy, scipy, matplotlib, Pillow, tifffile, opencv-python-headless.
 
-## 7. 代码结构
+## 7. Repository structure
 
 ```
-02_prepare.py          MATLAB 标注 → 数据集；按动物切分；统计边界顺序
-03_review_overlays.py  标注叠加图
-04_train.py            训练（CE + 顺序约束 + 平滑约束）
-05_evaluate.py         评估：W1、MAE、交叉率、跳变率，逐动物结果
-06_avi_match.py        在 AVI 中找到 TIFF 对应的帧、缩放和翻转
-07_avi_infer.py        AVI 逐帧推理，生成深度图和厚度图
-08_analyze.py          误差分析：CHOROID 双线评估、按实验组统计、最差图像
-list_avi.py            列出 AVI 及其所属 split
-make_report_assets.py  收集结果到 results/
-octb/                  数据读取、软标签、模型、损失、指标
-slurm/                 作业脚本
-tests/                 合成数据端到端测试（bash tests/smoke_test.sh）
-results/               图、指标表、训练记录、模型权重
+02_prepare.py          MATLAB annotations → dataset; split by animal; boundary order statistics
+03_review_overlays.py  annotation overlays
+04_train.py            training (CE + order constraint + smoothness constraint)
+05_evaluate.py         evaluation: W1, MAE, crossing rate, jump rate, per-animal results
+06_avi_match.py        find the AVI frame, scale and flip that correspond to a TIFF
+07_avi_infer.py        frame-by-frame AVI inference, depth and thickness maps
+08_analyze.py          error analysis: two-line CHOROID evaluation, per-group statistics, worst images
+list_avi.py            list AVIs and the split of their animal
+make_report_assets.py  collect results into results/
+octb/                  data loading, soft targets, model, losses, metrics
+slurm/                 job scripts
+tests/                 end-to-end test on synthetic data (bash tests/smoke_test.sh)
+results/               figures, metric tables, training records, model weights
 ```
