@@ -1,0 +1,35 @@
+{
+  "avi": "240603_MA-N978_r_734nm_prozess.avi",
+  "ckpt": "best.pt",
+  "crop_xywh": [
+    30,
+    26,
+    770,
+    1000
+  ],
+  "flip_vertical": false,
+  "scale_y": 0.9999999999999996,
+  "scale_x": 1.0,
+  "conf_thr": 0.7,
+  "postprocess": false,
+  "onh": null,
+  "n_frames_used": 400,
+  "coords": "y in crop pixels (0 = top of crop)",
+  "frame_axis": "frame index, NOT calibrated distance",
+  "reported_fraction": {
+    "RNFL": 0.7596688311688312,
+    "GCL": 0.41306818181818183,
+    "IPL": 0.39216883116883117,
+    "INL": 0.6747564935064935,
+    "OPL": 0.7561818181818182,
+    "ONL": 0.7984837662337663,
+    "OLM": 0.7042727272727273,
+    "IS": 0.7861006493506494,
+    "OS": 0.8692824675324675,
+    "RPE": 0.8595584415584415,
+    "CHOROID_upper": 0.9536980519480519,
+    "CHOROID_lower": 0.9730454545454545
+  },
+  "choroid": "two curves from the top-2 peaks; reported where local mass > choroid_thr",
+  "choroid_thr": 0.2
+}

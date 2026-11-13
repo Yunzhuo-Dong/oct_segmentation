@@ -1,0 +1,244 @@
+{
+  "args": {
+    "arch": "ffc_unet",
+    "base": 32,
+    "depth": 5,
+    "ffc_from": 2,
+    "epochs": 30,
+    "bs": 16,
+    "micro_bs": 4,
+    "lr": 0.0003,
+    "wd": 0.0001,
+    "warmup_iters": 51,
+    "seed": 42,
+    "sigma": 1.5,
+    "vshift": 40,
+    "no_hflip": false,
+    "no_intensity": false,
+    "ce_balance": "column",
+    "lambda_order": 0.1,
+    "lambda_smooth": 0.01,
+    "constraint_start_epoch": 2,
+    "constraint_ramp_epochs": 3,
+    "gate_thr": 0.7,
+    "gate_win": 5,
+    "amp": "bf16",
+    "workers": 7,
+    "resume": false,
+    "force": false,
+    "max_train_batches": 0,
+    "max_val_batches": 0
+  },
+  "n_params": 13163851,
+  "n_train": 546,
+  "n_val": 88,
+  "constraint_pairs": [
+    [
+      "RNFL",
+      "GCL"
+    ],
+    [
+      "RNFL",
+      "IPL"
+    ],
+    [
+      "RNFL",
+      "INL"
+    ],
+    [
+      "RNFL",
+      "OPL"
+    ],
+    [
+      "RNFL",
+      "ONL"
+    ],
+    [
+      "RNFL",
+      "OLM"
+    ],
+    [
+      "RNFL",
+      "IS"
+    ],
+    [
+      "RNFL",
+      "OS"
+    ],
+    [
+      "RNFL",
+      "RPE"
+    ],
+    [
+      "GCL",
+      "IPL"
+    ],
+    [
+      "GCL",
+      "INL"
+    ],
+    [
+      "GCL",
+      "OPL"
+    ],
+    [
+      "GCL",
+      "ONL"
+    ],
+    [
+      "GCL",
+      "OLM"
+    ],
+    [
+      "GCL",
+      "IS"
+    ],
+    [
+      "GCL",
+      "OS"
+    ],
+    [
+      "GCL",
+      "RPE"
+    ],
+    [
+      "IPL",
+      "INL"
+    ],
+    [
+      "IPL",
+      "OPL"
+    ],
+    [
+      "IPL",
+      "ONL"
+    ],
+    [
+      "IPL",
+      "OLM"
+    ],
+    [
+      "IPL",
+      "IS"
+    ],
+    [
+      "IPL",
+      "OS"
+    ],
+    [
+      "IPL",
+      "RPE"
+    ],
+    [
+      "INL",
+      "OPL"
+    ],
+    [
+      "INL",
+      "ONL"
+    ],
+    [
+      "INL",
+      "OLM"
+    ],
+    [
+      "INL",
+      "IS"
+    ],
+    [
+      "INL",
+      "OS"
+    ],
+    [
+      "INL",
+      "RPE"
+    ],
+    [
+      "OPL",
+      "ONL"
+    ],
+    [
+      "OPL",
+      "OLM"
+    ],
+    [
+      "OPL",
+      "IS"
+    ],
+    [
+      "OPL",
+      "OS"
+    ],
+    [
+      "OPL",
+      "RPE"
+    ],
+    [
+      "ONL",
+      "OLM"
+    ],
+    [
+      "ONL",
+      "IS"
+    ],
+    [
+      "ONL",
+      "OS"
+    ],
+    [
+      "ONL",
+      "RPE"
+    ],
+    [
+      "OLM",
+      "IS"
+    ],
+    [
+      "OLM",
+      "OS"
+    ],
+    [
+      "OLM",
+      "RPE"
+    ],
+    [
+      "IS",
+      "OS"
+    ],
+    [
+      "IS",
+      "RPE"
+    ],
+    [
+      "OS",
+      "RPE"
+    ]
+  ],
+  "smooth_channels": [
+    "RNFL",
+    "GCL",
+    "IPL",
+    "INL",
+    "OPL",
+    "ONL",
+    "OLM",
+    "IS",
+    "OS",
+    "RPE"
+  ],
+  "gpu": "NVIDIA H100",
+  "torch": "2.12.0+cu130",
+  "boundaries": [
+    "RNFL",
+    "GCL",
+    "IPL",
+    "INL",
+    "OPL",
+    "ONL",
+    "OLM",
+    "IS",
+    "OS",
+    "RPE",
+    "CHOROID"
+  ]
+}

@@ -1,0 +1,233 @@
+{
+  "chain": [
+    "RNFL",
+    "GCL",
+    "IPL",
+    "INL",
+    "OPL",
+    "ONL",
+    "OLM",
+    "IS",
+    "OS",
+    "RPE",
+    "CHOROID"
+  ],
+  "orientation": "vitreous_top",
+  "pairs": [
+    [
+      "RNFL",
+      "GCL"
+    ],
+    [
+      "RNFL",
+      "IPL"
+    ],
+    [
+      "RNFL",
+      "INL"
+    ],
+    [
+      "RNFL",
+      "OPL"
+    ],
+    [
+      "RNFL",
+      "ONL"
+    ],
+    [
+      "RNFL",
+      "OLM"
+    ],
+    [
+      "RNFL",
+      "IS"
+    ],
+    [
+      "RNFL",
+      "OS"
+    ],
+    [
+      "RNFL",
+      "RPE"
+    ],
+    [
+      "GCL",
+      "IPL"
+    ],
+    [
+      "GCL",
+      "INL"
+    ],
+    [
+      "GCL",
+      "OPL"
+    ],
+    [
+      "GCL",
+      "ONL"
+    ],
+    [
+      "GCL",
+      "OLM"
+    ],
+    [
+      "GCL",
+      "IS"
+    ],
+    [
+      "GCL",
+      "OS"
+    ],
+    [
+      "GCL",
+      "RPE"
+    ],
+    [
+      "IPL",
+      "INL"
+    ],
+    [
+      "IPL",
+      "OPL"
+    ],
+    [
+      "IPL",
+      "ONL"
+    ],
+    [
+      "IPL",
+      "OLM"
+    ],
+    [
+      "IPL",
+      "IS"
+    ],
+    [
+      "IPL",
+      "OS"
+    ],
+    [
+      "IPL",
+      "RPE"
+    ],
+    [
+      "INL",
+      "OPL"
+    ],
+    [
+      "INL",
+      "ONL"
+    ],
+    [
+      "INL",
+      "OLM"
+    ],
+    [
+      "INL",
+      "IS"
+    ],
+    [
+      "INL",
+      "OS"
+    ],
+    [
+      "INL",
+      "RPE"
+    ],
+    [
+      "OPL",
+      "ONL"
+    ],
+    [
+      "OPL",
+      "OLM"
+    ],
+    [
+      "OPL",
+      "IS"
+    ],
+    [
+      "OPL",
+      "OS"
+    ],
+    [
+      "OPL",
+      "RPE"
+    ],
+    [
+      "ONL",
+      "OLM"
+    ],
+    [
+      "ONL",
+      "IS"
+    ],
+    [
+      "ONL",
+      "OS"
+    ],
+    [
+      "ONL",
+      "RPE"
+    ],
+    [
+      "OLM",
+      "IS"
+    ],
+    [
+      "OLM",
+      "OS"
+    ],
+    [
+      "OLM",
+      "RPE"
+    ],
+    [
+      "IS",
+      "OS"
+    ],
+    [
+      "IS",
+      "RPE"
+    ],
+    [
+      "OS",
+      "RPE"
+    ]
+  ],
+  "excluded_from_constraints": [
+    "CHOROID"
+  ],
+  "multi_curve_fraction": {
+    "RNFL": 0.0014808468693791729,
+    "GCL": 0.010017187201611082,
+    "IPL": 0.010603569357026782,
+    "INL": 0.0003180839564931833,
+    "OPL": 8.441276152128679e-05,
+    "ONL": 0.0032785612292879052,
+    "OLM": 0.0,
+    "IS": 0.0,
+    "OS": 0.0,
+    "RPE": 0.0022903279769343554,
+    "CHOROID": 0.8148735359304053
+  },
+  "mean_y_train": {
+    "RNFL": 219.73050505428992,
+    "GCL": 244.26016940847322,
+    "IPL": 259.80891254253316,
+    "INL": 347.6468801286082,
+    "OPL": 409.9687265894851,
+    "ONL": 424.55481613611414,
+    "OLM": 527.7330858330859,
+    "IS": 555.116701833128,
+    "OS": 595.237379594127,
+    "RPE": 595.722265301452,
+    "CHOROID": 612.6102832904545
+  },
+  "criteria": {
+    "min_support": 200,
+    "max_reversed_rate": 0.01,
+    "multi_curve_thr": 0.05,
+    "computed_on": "train"
+  }
+}

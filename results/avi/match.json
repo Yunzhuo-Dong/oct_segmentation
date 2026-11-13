@@ -1,0 +1,38 @@
+{
+  "avi": "240603_MA-N978_r_734nm_prozess.avi",
+  "tiff": "240603_MA-N978_r_734nm_prozess_1.tiff",
+  "tiff_shape": [
+    1143,
+    782
+  ],
+  "avi_frame_shape": [
+    2048,
+    800
+  ],
+  "n_frames": 800,
+  "best_frame": 59,
+  "ncc": 0.9998712539672852,
+  "flip_vertical": false,
+  "scale_y_tiff_to_avi": 1.0000000000000004,
+  "scale_x_tiff_to_avi": 1.0,
+  "tiff_origin_in_avi_xy": [
+    18.0,
+    23.999999999999943
+  ],
+  "tiff_extent_in_avi_xywh": [
+    18.0,
+    23.999999999999943,
+    782.0,
+    1143.0000000000005
+  ],
+  "supervisor_crop_xywh": [
+    30,
+    26,
+    770,
+    1000
+  ],
+  "infer_scale_y": 0.9999999999999996,
+  "infer_scale_x": 1.0,
+  "infer_flip_vertical": false,
+  "note": "ncc < ~0.5 means the match is unreliable (different scan / processing). Check several scans before fixing a global scale."
+}

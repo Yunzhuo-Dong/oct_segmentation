@@ -1,0 +1,7 @@
+numpy
+scipy
+torch>=2.1
+matplotlib
+Pillow
+tifffile              # optional, better TIFF support
+opencv-python-headless  # needed for AVI steps (06/07)

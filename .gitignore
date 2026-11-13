@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+logs/
+*.log
+# checkpoints and data stay on HPC; only the slim weights in results/model are tracked
+*.pt
+!results/model/*.pt
+*.npz
+*.zip
+oct_bseg_old*/
